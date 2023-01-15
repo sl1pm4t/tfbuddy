@@ -1,20 +1,22 @@
 apiVersion: apps/v1
 kind: Deployment
 metadata:
-  name: tfbuddy
+  name: tfbuddy-server
 spec:
   selector:
     matchLabels:
-      app: tfbuddy
+      app: tfbuddy-server
   replicas: 1
   template:
     metadata:
       labels:
-        app: tfbuddy
+        app: tfbuddy-server
     spec:
       containers:
-        - name: tfbuddy
+        - name: tfbuddy-server
           image: tfbuddy-server
+          args:
+            - --enable-server
           ports:
             - containerPort: 2345
               name: dlv

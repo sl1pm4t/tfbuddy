@@ -58,7 +58,7 @@ tfcOutputs=local_terraform_resource(
     'localdev/terraform/*.tf',
   ],
   labels=["tfc"],
-  resource_deps=['wait-ngrok-url']
+  # resource_deps=['wait-ngrok-url']
 )
 
 if tfcOutputs:
@@ -90,10 +90,11 @@ if cfg.get('enable_gitlab'):
     ],
     resource_deps=[
       'tf-tfc',
-      'wait-ngrok-url',
+      # 'wait-ngrok-url',
     ],
     labels=['gitlab']
   )
+  glProject=gitlabOutputs.setdefault('gitlab_project_name', '') if gitlabOutputs else 'foo'
 
 # /////////////////////////////////////////////////////////////////////////////
 # G I T H U B  P R O J E C T
@@ -225,7 +226,6 @@ else:
     ]
   )
 
-
 cmd_button('loc:go mod tidy',
   argv=['go', 'mod', 'tidy'],
   resource='tfbuddy',
@@ -245,16 +245,16 @@ cmd_button('restart-pod',
    text='restart pod',
 )
 
-
 # build TFBuddy ConfigMap based on enabled VCS and current state
 cfgInputs = {
   'TFBUDDY_LOG_LEVEL': 'debug',
   'TFBUDDY_DEFAULT_TFC_ORGANIZATION' : os.getenv('TFC_ORGANIZATION'),
-  'TFBUDDY_WORKSPACE_ALLOW_LIST' : tfcOutputs.setdefault('tfc_workspace', '') if tfcOutputs else '',
+  #'TFBUDDY_WORKSPACE_ALLOW_LIST' : tfcOutputs.setdefault('tfc_workspace', '') if tfcOutputs else '',
+  'TFBUDDY_WORKSPACE_DENY_LIST' : 'foo',
   'GITLAB_TOKEN_USER' : os.getenv('GITLAB_TOKEN_USER'),
 }
-if cfg.get('enable_gitlab') and gitlabOutputs:
-  cfgInputs.update({'TFBUDDY_PROJECT_ALLOW_LIST': gitlabOutputs.setdefault('gitlab_project_name', '')})
+if cfg.get('enable_gitlab') and glProject:
+  cfgInputs.update({'TFBUDDY_PROJECT_ALLOW_LIST': glProject})
 
 if cfg.get('enable_github') and githubOutputs:
   cfgInputs.update({'TFBUDDY_GITHUB_REPO_ALLOW_LIST': githubOutputs.setdefault('github_repo_name', '')})
@@ -267,7 +267,6 @@ k8s_resource(
   objects=['tfbuddy-config:configmap'],
   labels=["tfbuddy"],
   new_name='tfbuddy-config',
-  resource_deps=['tf-gitlab']
 )
 k8s_yaml(
   secret_from_dict("tfbuddy-secrets", inputs = {
@@ -287,8 +286,21 @@ k8s_resource(
 k8s_yaml(kustomize('localdev/manifests/'))
 
 k8s_resource(
-  'tfbuddy',
+  'tfbuddy-server',
   port_forwards=[2345, 8080],
+  resource_deps=[
+    # 'go-build',
+    'go-test',
+    'nats',
+    'tfbuddy-config',
+    'tfbuddy-secrets',
+  ],
+  labels=["tfbuddy"]
+)
+
+k8s_resource(
+  'tfbuddy-worker',
+  port_forwards=['12345:2345', '18080:8080'],
   resource_deps=[
     # 'go-build',
     'go-test',

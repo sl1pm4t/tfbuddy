@@ -4,4 +4,4 @@ kind: Kustomization
 resources:
   - deploy.yaml
   - service.yaml
-  - job.yaml
+  # - job.yaml

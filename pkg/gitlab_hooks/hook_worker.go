@@ -38,11 +38,13 @@ func NewGitlabEventWorker(h *GitlabHooksHandler, js nats.JetStreamContext) *Gitl
 }
 
 func (w *GitlabEventWorker) processNoteEventStreamMsg(msg *NoteEventMsg) error {
+	log.Debug().Caller().Msg("got gitlab NoteEvent from hook stream")
 	_, err := w.processNoteEvent(msg)
 	return err
 }
 
 func (w *GitlabEventWorker) processMREventStreamMsg(msg *MergeRequestEventMsg) error {
+	log.Debug().Caller().Msg("got gitlab MergeRequestEventMsg from hook stream")
 	_, err := w.processMergeRequestEvent(msg)
 	return err
 }

@@ -1,3 +1,5 @@
+# -*- mode: Python -*-
+
 load('ext://secret', 'secret_from_dict')
 
 # /////////////////////////////////////////////////////////////////////////////
@@ -41,8 +43,8 @@ k8s_resource(
     labels=["ngrok"],
     port_forwards=4040,
 )
-k8s_resource(
-    'wait-ngrok-url',
-    resource_deps=['k8s:namespace', 'ngrok'],
-    labels=["ngrok"]
-)
+# k8s_resource(
+#     'wait-ngrok-url',
+#     resource_deps=['k8s:namespace', 'ngrok'],
+#     labels=["ngrok"]
+# )

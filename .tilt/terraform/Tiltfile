@@ -59,6 +59,14 @@ def local_terraform_resource(
   for key in env:
     envList.append(key + "=" + env[key])
 
+  cmd_button(name+'apply',
+    argv=['terraform', '-chdir={}'.format(dir), 'apply'],
+    env=envList,
+    resource=name,
+    icon_name='todo',
+    text='Terraform Apply',
+  )
+
   cmd_button(name+'plan',
     argv=['terraform', '-chdir={}'.format(dir), 'plan'],
     env=envList,

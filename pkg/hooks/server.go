@@ -20,7 +20,7 @@ import (
 	"github.com/zapier/tfbuddy/pkg/tfc_hooks"
 )
 
-func StartServer() {
+func StartServer(worker bool, server bool) {
 	e := echo.New()
 	e.HideBanner = true
 	e.Use(middleware.Recover())
@@ -49,9 +49,27 @@ func StartServer() {
 	health.AddLivenessCheck("hook-stream", hs.HealthCheck)
 
 	// setup API clients
+	gh := github.NewGithubClient()
 	gl := gitlab.NewGitlabClient()
 	tfc := tfc_api.NewTFCClient()
 
+	if server {
+		initHooksHandlers(e, tfc, rs, js, gh, gl)
+	}
+
+	if worker {
+		closer := initWorkers(rs, tfc, gh, gl)
+		defer closer()
+	}
+
+	if err := e.Start(":8080"); err != nil {
+		log.Fatal().Err(err).Msg("could not start hooks server")
+	}
+
+}
+
+func initHooksHandlers(e *echo.Echo, tfc tfc_api.ApiClient, rs runstream.StreamClient, js nats.JetStreamContext, gh *github.Client, gl *gitlab.GitlabClient) {
+	log.Info().Msg("starting hooks handler")
 	hooksGroup := e.Group("/hooks")
 	hooksGroup.Use(middleware.BodyDump(func(c echo.Context, reqBody, resBody []byte) {
 		log.Trace().RawJSON("body", reqBody).Msg("Received hook request")
@@ -62,7 +80,6 @@ func StartServer() {
 	//
 	// Github
 	//
-	gh := github.NewGithubClient()
 	githubHooksHandler := ghHooks.NewGithubHooksHandler(gh, tfc, rs, js)
 	hooksGroup.POST("/github/events", githubHooksHandler.Handler)
 
@@ -80,17 +97,19 @@ func StartServer() {
 	// Run Notifications Handler
 	notifHandler := tfc_hooks.NewNotificationHandler(tfc, rs)
 	hooksGroup.POST("/tfc/notification", notifHandler.Handler())
+}
+
+func initWorkers(rs runstream.StreamClient, tfc tfc_api.ApiClient, gh *github.Client, gl *gitlab.GitlabClient) (closer func()) {
+	log.Info().Msg("starting hooks workers")
 
 	// Github Run Events Processor
 	ghep := github.NewRunEventsWorker(gh, rs, tfc)
-	defer ghep.Close()
 
 	// Gitlab Run Events Processor
 	grsp := gitlab.NewRunStatusProcessor(gl, rs, tfc)
-	defer grsp.Close()
 
-	if err := e.Start(":8080"); err != nil {
-		log.Fatal().Err(err).Msg("could not start hooks server")
+	return func() {
+		ghep.Close()
+		grsp.Close()
 	}
-
 }

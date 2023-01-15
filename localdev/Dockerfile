@@ -8,4 +8,4 @@ COPY build/tfbuddy /app/tfbuddy
 # sanity check build
 RUN /app/tfbuddy help
 
-CMD ["/app/tfbuddy", "tfc", "handler"]
+ENTRYPOINT ["/app/tfbuddy", "tfc", "handler"]
